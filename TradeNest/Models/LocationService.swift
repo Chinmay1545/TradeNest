@@ -16,13 +16,10 @@ enum LocationError: LocalizedError {
     }
 }
 
-/// Gets the user's real GPS location (CLLocationManager) and searches for real places near it (MKLocalSearch).
-/// It's a class because CLLocationManager reports results through a delegate.
 @MainActor
 final class LocationService: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
 
-    /// Holds the waiting `currentLocation()` call until the delegate gets an answer.
     private var continuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
 
     override init() {
@@ -31,9 +28,6 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
     }
 
-    // MARK: - Current location
-
-    /// Asks for permission if needed, then returns one location fix.
     func currentLocation() async throws -> CLLocationCoordinate2D {
         let status = manager.authorizationStatus
         if status == .denied || status == .restricted {
@@ -51,13 +45,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    /// Finishes the waiting call exactly once.
     private func finish(with result: Result<CLLocationCoordinate2D, Error>) {
         continuation?.resume(with: result)
         continuation = nil
     }
 
-    // MARK: - CLLocationManagerDelegate
     // CoreLocation calls these from outside our main actor, so they are `nonisolated`
     // and hop back to the main actor before touching our properties.
 
@@ -71,7 +63,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             case .denied, .restricted:
                 self.finish(with: .failure(LocationError.denied))
             default:
-                break // still waiting for the user to answer the prompt
+                break
             }
         }
     }
@@ -89,9 +81,6 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    // MARK: - Nearby meetup spots
-
-    /// Searches Apple Maps for public places around `center` and turns them into MeetupLocations.
     func searchNearby(near center: CLLocationCoordinate2D) async throws -> [MeetupLocation] {
         let queries = ["library", "cafe", "student union"]
         let region = MKCoordinateRegion(center: center, latitudinalMeters: 3000, longitudinalMeters: 3000)
@@ -106,7 +95,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             do {
                 response = try await MKLocalSearch(request: request).start()
             } catch {
-                continue // no results for this one query; the other queries can still find places
+                continue
             }
 
             for item in response.mapItems {
@@ -123,7 +112,6 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
             throw LocationError.noPlacesFound
         }
 
-        // Closest spots first, and keep the list short.
         let here = CLLocation(latitude: center.latitude, longitude: center.longitude)
         let sorted = places.sorted {
             CLLocation(latitude: $0.latitude, longitude: $0.longitude).distance(from: here) <

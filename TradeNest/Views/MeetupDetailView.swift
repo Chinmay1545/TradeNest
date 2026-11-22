@@ -8,7 +8,6 @@ struct MeetupDetailView: View {
     @State private var hasLoaded = false
     @State private var showPicker = false
 
-    /// Only the seller picks the meetup spot.
     private var isSeller: Bool { offer.sellerId == auth.currentUser?.id }
 
     var body: some View {
@@ -38,7 +37,6 @@ struct MeetupDetailView: View {
         .navigationTitle("Meetup")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showPicker, onDismiss: {
-            // Reload so the newly scheduled meetup shows up.
             Task {
                 await vm.loadMeetup(for: offer)
                 if vm.transaction != nil {
@@ -52,7 +50,7 @@ struct MeetupDetailView: View {
             await vm.loadMeetup(for: offer)
             hasLoaded = true
             if vm.transaction != nil {
-                await vm.requestLocation() // only used for the distance and the blue dot
+                await vm.requestLocation()
             }
         }
         .errorAlert($vm.errorMessage)
@@ -60,7 +58,6 @@ struct MeetupDetailView: View {
 
     private func meetupInfo(_ transaction: Transaction) -> some View {
         VStack(spacing: 0) {
-            // .automatic fits both the meetup pin and the user's position.
             Map(initialPosition: .automatic) {
                 UserAnnotation()
                 Marker(transaction.meetup.name, systemImage: "mappin", coordinate: transaction.meetup.coordinate)

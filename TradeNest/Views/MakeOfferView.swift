@@ -21,7 +21,6 @@ struct MakeOfferView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                // Only show the trade option when the seller accepts trades.
                 if listing.openToTrades {
                     Picker("Offer Type", selection: $type) {
                         Text("Cash Offer").tag(OfferType.cash)

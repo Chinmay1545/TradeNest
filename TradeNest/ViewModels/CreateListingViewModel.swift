@@ -12,7 +12,6 @@ final class CreateListingViewModel: ObservableObject {
     @Published var price: Double = 0
     @Published var openToTrades = true
     @Published var coverURL: String?
-    /// True after a successful ISBN lookup, so the view can show "Filled from Open Library".
     @Published var bookWasFilled = false
     @Published var isLookingUp = false
     @Published var isPosting = false

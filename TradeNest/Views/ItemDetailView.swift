@@ -5,14 +5,12 @@ struct ItemDetailView: View {
     @EnvironmentObject var auth: AuthViewModel
     @State private var showOffer = false
 
-    /// Buyers can only make offers on someone else's listing that is still Available.
     private var canMakeOffer: Bool {
         listing.sellerId != auth.currentUser?.id && listing.status == .available
     }
 
     var body: some View {
         List {
-            // Big cover picture
             Section {
                 HStack {
                     Spacer()

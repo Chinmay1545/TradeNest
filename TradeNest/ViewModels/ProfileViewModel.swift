@@ -23,8 +23,6 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Numbers for the profile header
-
     var activeCount: Int {
         myListings.filter { $0.status == .available }.count
     }
@@ -37,7 +35,6 @@ final class ProfileViewModel: ObservableObject {
         history.filter { $0.status == .completed }.count
     }
 
-    /// "Bought" if the user was the buyer in this meetup, otherwise "Sold".
     func role(in transaction: Transaction, userId: String) -> String {
         transaction.buyerId == userId ? "Bought" : "Sold"
     }

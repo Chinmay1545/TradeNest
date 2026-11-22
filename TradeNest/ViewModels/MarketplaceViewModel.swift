@@ -6,7 +6,6 @@ final class MarketplaceViewModel: ObservableObject {
     @Published var listings: [Listing] = []
     @Published var searchText = ""
     @Published var category: Category?
-    /// When true, only show listings whose seller accepts trade offers.
     @Published var tradesOnly = false
     @Published var isLoading = false
     @Published var errorMessage: String?

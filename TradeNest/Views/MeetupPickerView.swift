@@ -5,13 +5,11 @@ struct MeetupPickerView: View {
     let offer: Offer
     @StateObject private var vm = MeetupViewModel()
     @Environment(\.dismiss) private var dismiss
-    /// Start the map on the user's real location.
     @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Tapping a pin selects that spot, same as tapping its row.
                 Map(position: $camera, selection: $vm.selectedPlace) {
                     UserAnnotation()
                     ForEach(vm.nearbyPlaces) { place in
@@ -69,7 +67,6 @@ struct MeetupPickerView: View {
                 }
             }
             .onChange(of: vm.selectedPlace) { _, place in
-                // Zoom the map to the chosen spot.
                 if let place {
                     withAnimation {
                         camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: 800, longitudinalMeters: 800))

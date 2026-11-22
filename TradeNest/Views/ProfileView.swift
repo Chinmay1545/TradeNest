@@ -73,8 +73,6 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Pieces
-
     private func header(_ user: User) -> some View {
         VStack(spacing: 12) {
             HStack(spacing: 16) {

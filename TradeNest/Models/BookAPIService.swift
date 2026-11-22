@@ -1,6 +1,5 @@
 import Foundation
 
-/// The book details the app needs, already cleaned up for the ViewModel.
 struct BookInfo {
     var title: String
     var author: String
@@ -21,9 +20,7 @@ enum BookAPIError: LocalizedError {
     }
 }
 
-// MARK: - JSON shapes returned by Open Library
-// Example: {"ISBN:9780262046305": {"title": "...", "authors": [{"name": "..."}], "cover": {"medium": "https://..."}}}
-
+// Open Library response: {"ISBN:9780262046305": {"title": "...", "authors": [{"name": "..."}], "cover": {"medium": "https://..."}}}
 private struct OpenLibraryBook: Codable {
     var title: String
     var authors: [OpenLibraryAuthor]?
@@ -39,8 +36,6 @@ private struct OpenLibraryCover: Codable {
     var medium: String?
     var large: String?
 }
-
-// MARK: - Service
 
 struct BookAPIService {
     func fetchBook(isbn: String) async throws -> BookInfo {

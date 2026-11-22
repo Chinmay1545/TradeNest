@@ -41,7 +41,6 @@ struct CreateListingView: View {
                     Toggle("Open to trade offers", isOn: $vm.openToTrades)
                 }
 
-                // Its own section so the button sits fully above the tab bar.
                 Section {
                     Button {
                         guard let user = auth.currentUser else { return }
@@ -69,7 +68,6 @@ struct CreateListingView: View {
         }
     }
 
-    /// Cover + title shown after a successful Open Library lookup.
     private var bookPreview: some View {
         HStack(spacing: 12) {
             AsyncImage(url: URL(string: vm.coverURL ?? "")) { image in

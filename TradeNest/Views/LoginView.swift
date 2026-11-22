@@ -11,7 +11,6 @@ struct LoginView: View {
         VStack(spacing: 16) {
             Spacer()
 
-            // Logo and tagline
             Image(systemName: "arrow.left.arrow.right")
                 .font(.system(size: 36, weight: .bold))
                 .foregroundStyle(.white)

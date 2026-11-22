@@ -16,9 +16,6 @@ final class MeetupViewModel: ObservableObject {
     private let service = FirebaseService()
     private let locationService = LocationService()
 
-    // MARK: - Location (Workstream C)
-
-    /// Gets the user's real GPS position. Shows a message if location access is denied.
     func requestLocation() async {
         do {
             userLocation = try await locationService.currentLocation()
@@ -27,7 +24,6 @@ final class MeetupViewModel: ObservableObject {
         }
     }
 
-    /// Searches for real public places around the user. Needs `requestLocation()` to have succeeded first.
     func loadNearbyPlaces() async {
         guard let here = userLocation else { return }
         isLoadingPlaces = true
@@ -39,7 +35,6 @@ final class MeetupViewModel: ObservableObject {
         isLoadingPlaces = false
     }
 
-    /// e.g. "0.3 mi away", or nil until we know where the user is.
     func distanceText(to place: MeetupLocation) -> String? {
         guard let user = userLocation else { return nil }
         let here = CLLocation(latitude: user.latitude, longitude: user.longitude)
@@ -48,14 +43,11 @@ final class MeetupViewModel: ObservableObject {
         return String(format: "%.1f mi away", miles)
     }
 
-    /// Opens Apple Maps with walking directions to the meetup spot.
     func openDirections(to place: MeetupLocation) {
         let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: place.coordinate))
         mapItem.name = place.name
         mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
     }
-
-    // MARK: - Firestore (Workstream A)
 
     func loadMeetup(for offer: Offer) async {
         do {
@@ -76,7 +68,6 @@ final class MeetupViewModel: ObservableObject {
         }
     }
 
-    /// Completing the meetup also marks the listing as sold.
     func completeTransaction() async {
         guard var current = transaction else { return }
         do {

@@ -46,7 +46,6 @@ struct OffersView: View {
         }
     }
 
-    /// Spinner on first load, or a friendly message when the chosen tab has no offers.
     @ViewBuilder
     private var emptyState: some View {
         let list = showSent ? offers.sent : offers.received
@@ -103,7 +102,6 @@ struct OffersView: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-            // Lets the seller schedule (or view) the meetup any time after accepting.
             if offer.status == .accepted {
                 NavigationLink("Meetup") {
                     MeetupDetailView(offer: offer)
@@ -154,7 +152,6 @@ struct OffersView: View {
         }
     }
 
-    /// Icon for cash vs trade, plus the summary text from the ViewModel.
     private func offerTypeLabel(_ offer: Offer) -> some View {
         Label(offers.offerSummary(offer), systemImage: offer.type == .cash ? "dollarsign.circle" : "arrow.left.arrow.right.circle")
             .font(.subheadline)
