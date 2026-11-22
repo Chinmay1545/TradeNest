@@ -8,6 +8,10 @@ enum ServiceError: LocalizedError {
     case notSignedIn
     case listingUnavailable
     case tradeItemUnavailable
+    case wrongLogin
+    case emailTaken
+    case weakPassword
+    case noInternet
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +20,10 @@ enum ServiceError: LocalizedError {
         case .notSignedIn: return "You are not signed in."
         case .listingUnavailable: return "This item is no longer available."
         case .tradeItemUnavailable: return "The item offered in this trade is no longer available."
+        case .wrongLogin: return "Wrong email or password."
+        case .emailTaken: return "An account with this email already exists. Try logging in."
+        case .weakPassword: return "Password must be at least 6 characters."
+        case .noInternet: return "No internet connection. Check your connection and try again."
         }
     }
 }
@@ -32,18 +40,47 @@ struct FirebaseService {
     // MARK: - Auth
 
     func signIn(email: String, password: String) async throws -> User {
+        let email = email.trimmingCharacters(in: .whitespaces)
         guard email.lowercased().hasSuffix(".edu") else { throw ServiceError.invalidEmail }
-        let result = try await Auth.auth().signIn(withEmail: email, password: password)
-        return try await fetchUser(id: result.user.uid)
+        do {
+            let result = try await Auth.auth().signIn(withEmail: email, password: password)
+            return try await fetchUser(id: result.user.uid)
+        } catch {
+            throw friendlyAuthError(error)
+        }
     }
 
     func signUp(name: String, email: String, password: String, major: String, campus: String) async throws -> User {
+        let email = email.trimmingCharacters(in: .whitespaces)
         guard email.lowercased().hasSuffix(".edu") else { throw ServiceError.invalidEmail }
         guard !name.isEmpty else { throw ServiceError.missingFields }
-        let result = try await Auth.auth().createUser(withEmail: email, password: password)
-        let user = User(id: result.user.uid, name: name, email: email, major: major, campus: campus)
-        try await saveUser(user)
-        return user
+        do {
+            let result = try await Auth.auth().createUser(withEmail: email, password: password)
+            let user = User(id: result.user.uid, name: name, email: email, major: major, campus: campus)
+            try await saveUser(user)
+            return user
+        } catch {
+            throw friendlyAuthError(error)
+        }
+    }
+
+    /// Turns Firebase's technical login errors into messages a student understands.
+    private func friendlyAuthError(_ error: Error) -> Error {
+        let code = AuthErrorCode(rawValue: (error as NSError).code)
+        switch code {
+        case .wrongPassword, .invalidCredential, .userNotFound:
+            return ServiceError.wrongLogin
+        case .invalidEmail:
+            return ServiceError.invalidEmail
+        case .emailAlreadyInUse:
+            return ServiceError.emailTaken
+        case .weakPassword:
+            return ServiceError.weakPassword
+        case .networkError:
+            return ServiceError.noInternet
+        default:
+            return error
+        }
     }
 
     /// Returns the profile for the user Firebase remembers from a previous launch, if any.
