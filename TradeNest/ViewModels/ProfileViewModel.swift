@@ -40,6 +40,10 @@ final class ProfileViewModel: ObservableObject {
     }
 
     func deleteListing(_ listing: Listing) async {
+        if listing.status != .available {
+            errorMessage = "You can't delete a listing that's part of a trade."
+            return
+        }
         do {
             try await service.deleteListing(id: listing.id)
             myListings.removeAll { $0.id == listing.id }
