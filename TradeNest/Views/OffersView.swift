@@ -39,7 +39,7 @@ struct OffersView: View {
     private func receivedRow(_ offer: Offer) -> some View {
         VStack(alignment: .leading) {
             Text("\(offer.buyerName) for \(offer.listingTitle)")
-            Text("\(offer.type.rawValue): \(offer.cashAmount, format: .currency(code: "USD"))")
+            Text(offers.offerSummary(offer))
             Text(offer.status.rawValue)
                 .foregroundStyle(.secondary)
             if offer.status == .pending {
@@ -62,7 +62,7 @@ struct OffersView: View {
     private func sentRow(_ offer: Offer) -> some View {
         VStack(alignment: .leading) {
             Text(offer.listingTitle)
-            Text("\(offer.type.rawValue): \(offer.cashAmount, format: .currency(code: "USD"))")
+            Text(offers.offerSummary(offer))
             Text(offer.status.rawValue)
                 .foregroundStyle(.secondary)
             if offer.status == .pending {

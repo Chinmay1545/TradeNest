@@ -7,6 +7,8 @@ final class OfferViewModel: ObservableObject {
     @Published var sent: [Offer] = []
     /// The buyer's own Available listings, shown as choices for a trade offer.
     @Published var myTradeItems: [Listing] = []
+    /// Names of items offered in trades, keyed by the trade listing's id.
+    @Published var tradeItemTitles: [String: String] = [:]
     @Published var isSending = false
     @Published var errorMessage: String?
 
@@ -18,9 +20,36 @@ final class OfferViewModel: ObservableObject {
             received = offers.filter { $0.sellerId == userId }
             sent = offers.filter { $0.buyerId == userId }
             errorMessage = nil
+            await loadTradeItemTitles(for: offers)
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Trade offers only store the item's id, so look up each item's name once.
+    private func loadTradeItemTitles(for offers: [Offer]) async {
+        for offer in offers {
+            guard let itemId = offer.tradeListingId, tradeItemTitles[itemId] == nil else { continue }
+            do {
+                let item = try await service.fetchListing(id: itemId)
+                tradeItemTitles[itemId] = item?.title ?? "Item no longer listed"
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Short text for an offer row, e.g. "Cash: $40.00" or "Trade: TI-84 + $10.00".
+    func offerSummary(_ offer: Offer) -> String {
+        let cash = offer.cashAmount.formatted(.currency(code: "USD"))
+        if offer.type == .cash {
+            return "Cash: \(cash)"
+        }
+        var text = "Trade: \(tradeItemTitles[offer.tradeListingId ?? ""] ?? "an item")"
+        if offer.cashAmount > 0 {
+            text += " + \(cash)"
+        }
+        return text
     }
 
     /// Loads the buyer's own listings that are still Available, so they can offer one as a trade.
@@ -59,6 +88,9 @@ final class OfferViewModel: ObservableObject {
         do {
             try await service.saveOffer(offer)
             sent.append(offer)
+            if let tradeItem {
+                tradeItemTitles[tradeItem.id] = tradeItem.title
+            }
             return true
         } catch {
             errorMessage = error.localizedDescription

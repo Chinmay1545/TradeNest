@@ -151,4 +151,13 @@ struct FirebaseService {
         batch.updateData(["status": ListingStatus.sold.rawValue], forDocument: listings.document(transaction.listingId))
         try await batch.commit()
     }
+
+    // MARK: - Added by Person 2 (Workstream D)
+
+    /// One listing by id, e.g. the item offered in a trade. Returns nil if it was deleted.
+    func fetchListing(id: String) async throws -> Listing? {
+        let document = try await listings.document(id).getDocument()
+        guard document.exists else { return nil }
+        return try document.data(as: Listing.self)
+    }
 }
