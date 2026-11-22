@@ -19,16 +19,7 @@ struct MarketplaceView: View {
                     NavigationLink {
                         ItemDetailView(listing: listing)
                     } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(listing.title)
-                                Text(listing.sellerName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Text(listing.price, format: .currency(code: "USD"))
-                        }
+                        ListingRow(listing: listing)
                     }
                 }
                 .overlay {
@@ -48,6 +39,14 @@ struct MarketplaceView: View {
             }
             .navigationTitle("Marketplace")
             .searchable(text: $vm.searchText)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Toggle(isOn: $vm.tradesOnly) {
+                        Label("Trades only", systemImage: "arrow.left.arrow.right")
+                    }
+                    .toggleStyle(.button)
+                }
+            }
             .task { await vm.loadListings() }
             .errorAlert($vm.errorMessage)
         }

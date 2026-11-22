@@ -42,6 +42,11 @@ final class OfferViewModel: ObservableObject {
         }
     }
 
+    /// How many received offers still need an answer (shown on the Received tab).
+    var pendingReceivedCount: Int {
+        received.filter { $0.status == .pending }.count
+    }
+
     /// Short text for an offer row, e.g. "Cash: $40.00" or "Trade: TI-84 + $10.00".
     func offerSummary(_ offer: Offer) -> String {
         let cash = offer.cashAmount.formatted(.currency(code: "USD"))

@@ -10,7 +10,7 @@ struct OffersView: View {
         NavigationStack {
             VStack {
                 Picker("Offers", selection: $showSent) {
-                    Text("Received").tag(false)
+                    Text("Received (\(offers.pendingReceivedCount))").tag(false)
                     Text("Sent").tag(true)
                 }
                 .pickerStyle(.segmented)
@@ -67,16 +67,29 @@ struct OffersView: View {
     }
 
     private func receivedRow(_ offer: Offer) -> some View {
-        VStack(alignment: .leading) {
-            Text("\(offer.buyerName) for \(offer.listingTitle)")
-            Text(offers.offerSummary(offer))
-            Text(offer.status.rawValue)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 12) {
+                InitialsAvatar(name: offer.buyerName)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(offer.buyerName) for \(offer.listingTitle)")
+                        .font(.subheadline)
+                        .bold()
+                    offerTypeLabel(offer)
+                    if !offer.message.isEmpty {
+                        Text("\"\(offer.message)\"")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                StatusBadge(status: offer.status)
+            }
             if offer.status == .pending {
                 HStack {
                     Button("Reject") {
                         Task { await offers.reject(offer) }
                     }
+                    .buttonStyle(.bordered)
                     Button("Accept") {
                         Task {
                             await offers.accept(offer)
@@ -86,8 +99,8 @@ struct OffersView: View {
                             }
                         }
                     }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.bordered)
             }
             // Lets the seller schedule (or view) the meetup any time after accepting.
             if offer.status == .accepted {
@@ -96,14 +109,28 @@ struct OffersView: View {
                 }
             }
         }
+        .padding(.vertical, 4)
+        .swipeActions {
+            if offer.status == .pending {
+                Button("Reject", role: .destructive) {
+                    Task { await offers.reject(offer) }
+                }
+            }
+        }
     }
 
     private func sentRow(_ offer: Offer) -> some View {
-        VStack(alignment: .leading) {
-            Text(offer.listingTitle)
-            Text(offers.offerSummary(offer))
-            Text(offer.status.rawValue)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(offer.listingTitle)
+                        .font(.subheadline)
+                        .bold()
+                    offerTypeLabel(offer)
+                }
+                Spacer()
+                StatusBadge(status: offer.status)
+            }
             if offer.status == .pending {
                 Button("Withdraw") {
                     Task { await offers.withdraw(offer) }
@@ -116,5 +143,19 @@ struct OffersView: View {
                 }
             }
         }
+        .padding(.vertical, 4)
+        .swipeActions {
+            if offer.status == .pending {
+                Button("Withdraw", role: .destructive) {
+                    Task { await offers.withdraw(offer) }
+                }
+            }
+        }
+    }
+
+    /// Icon for cash vs trade, plus the summary text from the ViewModel.
+    private func offerTypeLabel(_ offer: Offer) -> some View {
+        Label(offers.offerSummary(offer), systemImage: offer.type == .cash ? "dollarsign.circle" : "arrow.left.arrow.right.circle")
+            .font(.subheadline)
     }
 }
