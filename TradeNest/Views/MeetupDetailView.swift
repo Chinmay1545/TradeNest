@@ -58,7 +58,7 @@ struct MeetupDetailView: View {
 
     private func meetupInfo(_ transaction: Transaction) -> some View {
         VStack(spacing: 0) {
-            Map(initialPosition: .automatic) {
+            Map(initialPosition: .region(MKCoordinateRegion(center: transaction.meetup.coordinate, latitudinalMeters: 1000, longitudinalMeters: 1000))) {
                 UserAnnotation()
                 Marker(transaction.meetup.name, systemImage: "mappin", coordinate: transaction.meetup.coordinate)
             }
