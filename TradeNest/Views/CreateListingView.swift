@@ -9,15 +9,27 @@ struct CreateListingView: View {
         NavigationStack {
             Form {
                 Section("Textbook Lookup") {
-                    TextField("ISBN", text: $vm.isbn)
-                    Button("Look Up") {
-                        Task { await vm.lookupISBN() }
+                    HStack {
+                        TextField("ISBN", text: $vm.isbn)
+                            .keyboardType(.numbersAndPunctuation)
+                        if vm.isLookingUp {
+                            ProgressView()
+                        } else {
+                            Button("Look Up") {
+                                Task { await vm.lookupISBN() }
+                            }
+                            .disabled(vm.isbn.isEmpty)
+                        }
+                    }
+                    if vm.bookWasFilled {
+                        bookPreview
                     }
                 }
+
                 Section("Details") {
                     TextField("Title", text: $vm.title)
                     TextField("Author", text: $vm.author)
-                    TextField("Description", text: $vm.description)
+                    TextField("Description", text: $vm.description, axis: .vertical)
                     Picker("Category", selection: $vm.category) {
                         ForEach(Category.allCases, id: \.self) { Text($0.rawValue) }
                     }
@@ -28,22 +40,63 @@ struct CreateListingView: View {
                         .keyboardType(.decimalPad)
                     Toggle("Open to trade offers", isOn: $vm.openToTrades)
                 }
-                Button("Post Listing") {
-                    guard let user = auth.currentUser else { return }
-                    Task { posted = await vm.postListing(sellerId: user.id, sellerName: user.name) }
+
+                // Its own section so the button sits fully above the tab bar.
+                Section {
+                    Button {
+                        guard let user = auth.currentUser else { return }
+                        Task { posted = await vm.postListing(sellerId: user.id, sellerName: user.name) }
+                    } label: {
+                        if vm.isPosting {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Post Listing")
+                                .bold()
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(vm.isPosting)
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("New Listing")
             .alert("Listing posted", isPresented: $posted) {
                 Button("OK", role: .cancel) {}
             }
-            .alert("Couldn't post listing", isPresented: Binding(
+            .alert("Something went wrong", isPresented: Binding(
                 get: { vm.errorMessage != nil },
                 set: { if !$0 { vm.errorMessage = nil } }
             )) {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(vm.errorMessage ?? "")
+            }
+        }
+    }
+
+    /// Cover + title shown after a successful Open Library lookup.
+    private var bookPreview: some View {
+        HStack(spacing: 12) {
+            AsyncImage(url: URL(string: vm.coverURL ?? "")) { image in
+                image.resizable().scaledToFit()
+            } placeholder: {
+                Image(systemName: "book.closed")
+                    .font(.title)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 50, height: 70)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Filled from Open Library", systemImage: "checkmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+                Text(vm.title)
+                    .font(.subheadline)
+                    .bold()
+                Text(vm.author)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
     }
