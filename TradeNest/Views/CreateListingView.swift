@@ -60,18 +60,12 @@ struct CreateListingView: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            .appBackground()
             .navigationTitle("New Listing")
             .alert("Listing posted", isPresented: $posted) {
                 Button("OK", role: .cancel) {}
             }
-            .alert("Something went wrong", isPresented: Binding(
-                get: { vm.errorMessage != nil },
-                set: { if !$0 { vm.errorMessage = nil } }
-            )) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(vm.errorMessage ?? "")
-            }
+            .errorAlert($vm.errorMessage)
         }
     }
 

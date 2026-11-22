@@ -82,6 +82,7 @@ struct MakeOfferView: View {
                     .disabled(offers.isSending)
                 }
             }
+            .appBackground()
             .navigationTitle("Make an Offer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

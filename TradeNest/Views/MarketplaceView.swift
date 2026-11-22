@@ -37,6 +37,7 @@ struct MarketplaceView: View {
                 }
                 .refreshable { await vm.loadListings() }
             }
+            .appBackground()
             .navigationTitle("Marketplace")
             .searchable(text: $vm.searchText)
             .toolbar {

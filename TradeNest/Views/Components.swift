@@ -2,6 +2,16 @@ import SwiftUI
 
 // Small reusable views shared by several screens.
 
+extension View {
+    /// The app's light cream background (dark in Dark Mode) behind lists and forms.
+    /// Usage: `.appBackground()`
+    func appBackground() -> some View {
+        self
+            .scrollContentBackground(.hidden)
+            .background(Color("AppBackground"))
+    }
+}
+
 /// A small rounded label, e.g. "Open to trades" or "Like New".
 struct TagView: View {
     let text: String

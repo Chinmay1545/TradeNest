@@ -60,6 +60,7 @@ struct MeetupPickerView: View {
                     }
                 }
             }
+            .appBackground()
             .navigationTitle("Choose a Meetup Spot")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

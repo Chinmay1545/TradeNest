@@ -34,6 +34,7 @@ struct MeetupDetailView: View {
                 )
             }
         }
+        .appBackground()
         .navigationTitle("Meetup")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showPicker, onDismiss: {

@@ -30,6 +30,7 @@ struct OffersView: View {
                 .overlay { emptyState }
                 .refreshable { await loadOffers() }
             }
+            .appBackground()
             .navigationTitle("Offers")
             .task { await loadOffers() }
             .errorAlert($offers.errorMessage)

@@ -75,6 +75,7 @@ struct ItemDetailView: View {
                 }
             }
         }
+        .appBackground()
         .navigationTitle("Item Details")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showOffer) {

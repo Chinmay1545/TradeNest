@@ -23,6 +23,25 @@ final class ProfileViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Numbers for the profile header
+
+    var activeCount: Int {
+        myListings.filter { $0.status == .available }.count
+    }
+
+    var soldCount: Int {
+        myListings.filter { $0.status == .sold }.count
+    }
+
+    var completedCount: Int {
+        history.filter { $0.status == .completed }.count
+    }
+
+    /// "Bought" if the user was the buyer in this meetup, otherwise "Sold".
+    func role(in transaction: Transaction, userId: String) -> String {
+        transaction.buyerId == userId ? "Bought" : "Sold"
+    }
+
     func deleteListing(_ listing: Listing) async {
         do {
             try await service.deleteListing(id: listing.id)
