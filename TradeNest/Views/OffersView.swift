@@ -27,12 +27,42 @@ struct OffersView: View {
                         }
                     }
                 }
+                .overlay { emptyState }
+                .refreshable { await loadOffers() }
             }
             .navigationTitle("Offers")
-            .task { await offers.loadOffers(userId: auth.currentUser?.id ?? "") }
+            .task { await loadOffers() }
+            .errorAlert($offers.errorMessage)
             .sheet(item: $acceptedOffer) { offer in
                 MeetupPickerView(offer: offer)
             }
+        }
+    }
+
+    private func loadOffers() async {
+        if let user = auth.currentUser {
+            await offers.loadOffers(userId: user.id)
+        }
+    }
+
+    /// Spinner on first load, or a friendly message when the chosen tab has no offers.
+    @ViewBuilder
+    private var emptyState: some View {
+        let list = showSent ? offers.sent : offers.received
+        if offers.isLoading && list.isEmpty {
+            ProgressView("Loading offers…")
+        } else if list.isEmpty && showSent {
+            ContentUnavailableView(
+                "No Sent Offers",
+                systemImage: "paperplane",
+                description: Text("Find something in the Market and make an offer.")
+            )
+        } else if list.isEmpty {
+            ContentUnavailableView(
+                "No Offers Yet",
+                systemImage: "tray",
+                description: Text("Offers on your listings will show up here.")
+            )
         }
     }
 

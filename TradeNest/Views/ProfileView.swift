@@ -16,7 +16,20 @@ struct ProfileView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                if vm.isLoading && vm.myListings.isEmpty && vm.history.isEmpty {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                }
+
                 Section("My Listings") {
+                    if vm.myListings.isEmpty && !vm.isLoading {
+                        Text("You haven't listed anything yet.")
+                            .foregroundStyle(.secondary)
+                    }
                     ForEach(vm.myListings) { listing in
                         HStack {
                             Text(listing.title)
@@ -31,7 +44,12 @@ struct ProfileView: View {
                         }
                     }
                 }
+
                 Section("Transaction History") {
+                    if vm.history.isEmpty && !vm.isLoading {
+                        Text("No meetups yet.")
+                            .foregroundStyle(.secondary)
+                    }
                     ForEach(vm.history) { transaction in
                         VStack(alignment: .leading) {
                             Text(transaction.itemTitle)
@@ -54,11 +72,15 @@ struct ProfileView: View {
             .sheet(item: $editingUser) { user in
                 EditProfileView(user: user)
             }
-            .task {
-                if let user = auth.currentUser {
-                    await vm.loadProfile(user: user)
-                }
-            }
+            .refreshable { await loadProfile() }
+            .task { await loadProfile() }
+            .errorAlert($vm.errorMessage)
+        }
+    }
+
+    private func loadProfile() async {
+        if let user = auth.currentUser {
+            await vm.loadProfile(user: user)
         }
     }
 }

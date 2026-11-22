@@ -31,10 +31,25 @@ struct MarketplaceView: View {
                         }
                     }
                 }
+                .overlay {
+                    if vm.isLoading && vm.listings.isEmpty {
+                        ProgressView("Loading listings…")
+                    } else if vm.filteredListings.isEmpty && !vm.searchText.isEmpty {
+                        ContentUnavailableView.search(text: vm.searchText)
+                    } else if vm.filteredListings.isEmpty {
+                        ContentUnavailableView(
+                            "No Listings",
+                            systemImage: "tray",
+                            description: Text("Nothing for sale here yet. Post something on the Sell tab!")
+                        )
+                    }
+                }
+                .refreshable { await vm.loadListings() }
             }
             .navigationTitle("Marketplace")
             .searchable(text: $vm.searchText)
             .task { await vm.loadListings() }
+            .errorAlert($vm.errorMessage)
         }
     }
 }

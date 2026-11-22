@@ -5,11 +5,14 @@ import Combine
 final class ProfileViewModel: ObservableObject {
     @Published var myListings: [Listing] = []
     @Published var history: [Transaction] = []
+    @Published var isLoading = false
     @Published var errorMessage: String?
 
     private let service = FirebaseService()
 
     func loadProfile(user: User) async {
+        isLoading = true
+        defer { isLoading = false }
         do {
             myListings = try await service.fetchListings(sellerId: user.id)
             history = try await service.fetchTransactions(userId: user.id)

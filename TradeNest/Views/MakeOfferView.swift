@@ -55,6 +55,13 @@ struct MakeOfferView: View {
                     TextField("Add a note for the seller", text: $message, axis: .vertical)
                 }
 
+                // Shown in the form (not as an alert) because OffersView already shows
+                // alerts for this same shared OfferViewModel.
+                if let error = offers.errorMessage {
+                    Text(error)
+                        .foregroundStyle(.red)
+                }
+
                 Section {
                     Button {
                         guard let user = auth.currentUser else { return }
@@ -87,7 +94,8 @@ struct MakeOfferView: View {
                     await offers.loadMyTradeItems(userId: user.id)
                 }
             }
-            .errorAlert($offers.errorMessage)
+            .onAppear { offers.errorMessage = nil }
+            .onDisappear { offers.errorMessage = nil }
         }
     }
 

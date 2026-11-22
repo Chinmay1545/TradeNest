@@ -10,11 +10,14 @@ final class OfferViewModel: ObservableObject {
     /// Names of items offered in trades, keyed by the trade listing's id.
     @Published var tradeItemTitles: [String: String] = [:]
     @Published var isSending = false
+    @Published var isLoading = false
     @Published var errorMessage: String?
 
     private let service = FirebaseService()
 
     func loadOffers(userId: String) async {
+        isLoading = true
+        defer { isLoading = false }
         do {
             let offers = try await service.fetchOffers(userId: userId)
             received = offers.filter { $0.sellerId == userId }

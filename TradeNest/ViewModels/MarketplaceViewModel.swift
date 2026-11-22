@@ -6,6 +6,7 @@ final class MarketplaceViewModel: ObservableObject {
     @Published var listings: [Listing] = []
     @Published var searchText = ""
     @Published var category: Category?
+    @Published var isLoading = false
     @Published var errorMessage: String?
 
     private let service = FirebaseService()
@@ -18,6 +19,8 @@ final class MarketplaceViewModel: ObservableObject {
     }
 
     func loadListings() async {
+        isLoading = true
+        defer { isLoading = false }
         do {
             listings = try await service.fetchAvailableListings()
             errorMessage = nil
