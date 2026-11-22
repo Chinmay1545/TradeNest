@@ -8,34 +8,106 @@ struct MakeOfferView: View {
     @State private var type: OfferType = .cash
     @State private var cash: Double = 0
     @State private var message = ""
+    @State private var tradeItem: Listing?
 
     var body: some View {
         NavigationStack {
             Form {
-                Text(listing.title)
-                Picker("Offer Type", selection: $type) {
-                    Text("Cash Offer").tag(OfferType.cash)
-                    Text("Trade Offer").tag(OfferType.trade)
-                }
-                .pickerStyle(.segmented)
-                if type == .trade {
-                    Text("Choose one of your items (coming soon)")
+                Section {
+                    Text(listing.title)
+                        .font(.headline)
+                    Text("Asking \(listing.price, format: .currency(code: "USD")) · \(listing.sellerName)")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
-                TextField("Amount", value: $cash, format: .number)
-                    .keyboardType(.decimalPad)
-                TextField("Message", text: $message)
-                Button("Send Offer") {
-                    guard let user = auth.currentUser else { return }
-                    Task {
-                        await offers.makeOffer(listing: listing, type: type, cash: cash, tradeItem: nil, message: message, buyer: user)
-                        dismiss()
+
+                // Only show the trade option when the seller accepts trades.
+                if listing.openToTrades {
+                    Picker("Offer Type", selection: $type) {
+                        Text("Cash Offer").tag(OfferType.cash)
+                        Text("Trade Offer").tag(OfferType.trade)
                     }
+                    .pickerStyle(.segmented)
+                }
+
+                if type == .cash {
+                    Section("Your offer") {
+                        TextField("Amount", value: $cash, format: .currency(code: "USD"))
+                            .keyboardType(.decimalPad)
+                    }
+                } else {
+                    Section("Offer one of your items") {
+                        if offers.myTradeItems.isEmpty {
+                            Text("You have no available listings to trade. Post one on the Sell tab first.")
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(offers.myTradeItems) { item in
+                            tradeItemRow(item)
+                        }
+                    }
+                    Section("Add cash (optional)") {
+                        TextField("Amount", value: $cash, format: .currency(code: "USD"))
+                            .keyboardType(.decimalPad)
+                    }
+                }
+
+                Section("Message") {
+                    TextField("Add a note for the seller", text: $message, axis: .vertical)
+                }
+
+                Section {
+                    Button {
+                        guard let user = auth.currentUser else { return }
+                        Task {
+                            let sent = await offers.makeOffer(listing: listing, type: type, cash: cash, tradeItem: type == .trade ? tradeItem : nil, message: message, buyer: user)
+                            if sent { dismiss() }
+                        }
+                    } label: {
+                        if offers.isSending {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Send Offer")
+                                .bold()
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(offers.isSending)
                 }
             }
             .navigationTitle("Make an Offer")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                Button("Cancel") { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .task {
+                if let user = auth.currentUser {
+                    await offers.loadMyTradeItems(userId: user.id)
+                }
+            }
+            .errorAlert($offers.errorMessage)
+        }
+    }
+
+    private func tradeItemRow(_ item: Listing) -> some View {
+        Button {
+            tradeItem = item
+        } label: {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(item.title)
+                        .foregroundStyle(.primary)
+                    Text("Listed at \(item.price, format: .currency(code: "USD"))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if tradeItem?.id == item.id {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.tint)
+                }
             }
         }
     }
