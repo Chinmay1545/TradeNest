@@ -5,7 +5,10 @@ struct ContentView: View {
     @StateObject private var offers = OfferViewModel()
 
     var body: some View {
-        if auth.currentUser == nil {
+        if auth.isRestoringSession {
+            ProgressView()
+                .task { await auth.restoreSession() }
+        } else if auth.currentUser == nil {
             LoginView()
         } else {
             TabView {

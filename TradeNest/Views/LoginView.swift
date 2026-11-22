@@ -4,6 +4,7 @@ struct LoginView: View {
     @EnvironmentObject var auth: AuthViewModel
     @State private var email = ""
     @State private var password = ""
+    @State private var showSignUp = false
 
     var body: some View {
         VStack(spacing: 16) {
@@ -24,9 +25,13 @@ struct LoginView: View {
             }
             .buttonStyle(.borderedProminent)
             Button("Create an Account") {
-                Task { await auth.register(name: "New Student", email: email, password: password) }
+                auth.errorMessage = ""
+                showSignUp = true
             }
         }
         .padding()
+        .sheet(isPresented: $showSignUp) {
+            SignUpView()
+        }
     }
 }

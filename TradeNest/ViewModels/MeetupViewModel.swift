@@ -9,6 +9,7 @@ final class MeetupViewModel: ObservableObject {
     @Published var selectedPlace: MeetupLocation?
     @Published var meetupTime = Date()
     @Published var transaction: Transaction?
+    @Published var errorMessage: String?
 
     private let service = FirebaseService()
     private let locationService = LocationService()
@@ -22,20 +23,33 @@ final class MeetupViewModel: ObservableObject {
     }
 
     func loadMeetup(for offer: Offer) async {
-        transaction = try? await service.fetchTransaction(offerId: offer.id)
+        do {
+            transaction = try await service.fetchTransaction(offerId: offer.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func confirmMeetup(offer: Offer) async {
         guard let place = selectedPlace else { return }
-        let newTransaction = Transaction(id: UUID().uuidString, offerId: offer.id, buyerId: offer.buyerId, sellerId: offer.sellerId, itemTitle: offer.listingTitle, meetup: place, meetupTime: meetupTime, status: .scheduled)
-        try? await service.saveTransaction(newTransaction)
-        transaction = newTransaction
+        let newTransaction = Transaction(id: UUID().uuidString, offerId: offer.id, listingId: offer.listingId, buyerId: offer.buyerId, sellerId: offer.sellerId, itemTitle: offer.listingTitle, meetup: place, meetupTime: meetupTime, status: .scheduled)
+        do {
+            try await service.saveTransaction(newTransaction)
+            transaction = newTransaction
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
+    /// Completing the meetup also marks the listing as sold.
     func completeTransaction() async {
         guard var current = transaction else { return }
-        current.status = .completed
-        try? await service.saveTransaction(current)
-        transaction = current
+        do {
+            try await service.completeTransaction(current)
+            current.status = .completed
+            transaction = current
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

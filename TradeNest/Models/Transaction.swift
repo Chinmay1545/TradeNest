@@ -9,6 +9,7 @@ enum TransactionStatus: String, Codable {
 struct Transaction: Identifiable, Codable {
     var id: String
     var offerId: String
+    var listingId: String
     var buyerId: String
     var sellerId: String
     var itemTitle: String

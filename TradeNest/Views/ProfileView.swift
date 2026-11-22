@@ -3,11 +3,12 @@ import SwiftUI
 struct ProfileView: View {
     @EnvironmentObject var auth: AuthViewModel
     @StateObject private var vm = ProfileViewModel()
+    @State private var editingUser: User?
 
     var body: some View {
         NavigationStack {
             List {
-                if let user = vm.user {
+                if let user = auth.currentUser {
                     Section {
                         Text(user.name)
                             .font(.title2)
@@ -43,7 +44,15 @@ struct ProfileView: View {
             }
             .navigationTitle("Profile")
             .toolbar {
-                Button("Log Out") { auth.logout() }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Edit") { editingUser = auth.currentUser }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Log Out") { auth.logout() }
+                }
+            }
+            .sheet(item: $editingUser) { user in
+                EditProfileView(user: user)
             }
             .task {
                 if let user = auth.currentUser {
