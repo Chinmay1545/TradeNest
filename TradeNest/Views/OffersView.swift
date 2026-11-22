@@ -50,11 +50,20 @@ struct OffersView: View {
                     Button("Accept") {
                         Task {
                             await offers.accept(offer)
-                            acceptedOffer = offer
+                            // Only open the meetup picker if the accept actually saved.
+                            if offers.received.first(where: { $0.id == offer.id })?.status == .accepted {
+                                acceptedOffer = offer
+                            }
                         }
                     }
                 }
                 .buttonStyle(.bordered)
+            }
+            // Lets the seller schedule (or view) the meetup any time after accepting.
+            if offer.status == .accepted {
+                NavigationLink("Meetup") {
+                    MeetupDetailView(offer: offer)
+                }
             }
         }
     }

@@ -3,8 +3,13 @@ import MapKit
 
 struct MeetupDetailView: View {
     let offer: Offer
+    @EnvironmentObject var auth: AuthViewModel
     @StateObject private var vm = MeetupViewModel()
     @State private var hasLoaded = false
+    @State private var showPicker = false
+
+    /// Only the seller picks the meetup spot.
+    private var isSeller: Bool { offer.sellerId == auth.currentUser?.id }
 
     var body: some View {
         Group {
@@ -12,6 +17,15 @@ struct MeetupDetailView: View {
                 meetupInfo(transaction)
             } else if !hasLoaded {
                 ProgressView()
+            } else if isSeller {
+                ContentUnavailableView {
+                    Label("No Meetup Yet", systemImage: "mappin.slash")
+                } description: {
+                    Text("Pick a safe public spot and a time to meet the buyer.")
+                } actions: {
+                    Button("Schedule Meetup") { showPicker = true }
+                        .buttonStyle(.borderedProminent)
+                }
             } else {
                 ContentUnavailableView(
                     "No Meetup Yet",
@@ -22,6 +36,17 @@ struct MeetupDetailView: View {
         }
         .navigationTitle("Meetup")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showPicker, onDismiss: {
+            // Reload so the newly scheduled meetup shows up.
+            Task {
+                await vm.loadMeetup(for: offer)
+                if vm.transaction != nil {
+                    await vm.requestLocation()
+                }
+            }
+        }) {
+            MeetupPickerView(offer: offer)
+        }
         .task {
             await vm.loadMeetup(for: offer)
             hasLoaded = true

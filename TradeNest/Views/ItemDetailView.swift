@@ -22,7 +22,7 @@ struct ItemDetailView: View {
             if listing.openToTrades {
                 Text("Open to trades")
             }
-            if listing.sellerId != auth.currentUser?.id {
+            if listing.sellerId != auth.currentUser?.id && listing.status == .available {
                 Button("Make Offer") { showOffer = true }
             }
         }
