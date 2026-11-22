@@ -7,6 +7,7 @@ enum ServiceError: LocalizedError {
     case missingFields
     case notSignedIn
     case listingUnavailable
+    case tradeItemUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -14,6 +15,7 @@ enum ServiceError: LocalizedError {
         case .missingFields: return "Please fill in all required fields."
         case .notSignedIn: return "You are not signed in."
         case .listingUnavailable: return "This item is no longer available."
+        case .tradeItemUnavailable: return "The item offered in this trade is no longer available."
         }
     }
 }
@@ -117,6 +119,14 @@ struct FirebaseService {
             throw ServiceError.listingUnavailable
         }
 
+        // In a trade, the buyer's item must still be available too.
+        if let tradeId = offer.tradeListingId {
+            let tradeItem = try await fetchListing(id: tradeId)
+            if tradeItem?.status != .available {
+                throw ServiceError.tradeItemUnavailable
+            }
+        }
+
         let others = try await offers.whereField("listingId", isEqualTo: offer.listingId).getDocuments()
             .documents
             .map { try $0.data(as: Offer.self) }
@@ -125,6 +135,9 @@ struct FirebaseService {
         let batch = db.batch()
         batch.updateData(["status": OfferStatus.accepted.rawValue], forDocument: offers.document(offer.id))
         batch.updateData(["status": ListingStatus.pending.rawValue], forDocument: listings.document(offer.listingId))
+        if let tradeId = offer.tradeListingId {
+            batch.updateData(["status": ListingStatus.pending.rawValue], forDocument: listings.document(tradeId))
+        }
         for other in others {
             batch.updateData(["status": OfferStatus.rejected.rawValue], forDocument: offers.document(other.id))
         }
@@ -152,10 +165,16 @@ struct FirebaseService {
     }
 
     /// Marks the meetup completed and the listing sold together.
+    /// In a trade, the buyer's traded item is marked sold too.
     func completeTransaction(_ transaction: Transaction) async throws {
+        let offer = try await offers.document(transaction.offerId).getDocument().data(as: Offer.self)
+
         let batch = db.batch()
         batch.updateData(["status": TransactionStatus.completed.rawValue], forDocument: transactions.document(transaction.id))
         batch.updateData(["status": ListingStatus.sold.rawValue], forDocument: listings.document(transaction.listingId))
+        if let tradeId = offer.tradeListingId {
+            batch.updateData(["status": ListingStatus.sold.rawValue], forDocument: listings.document(tradeId))
+        }
         try await batch.commit()
     }
 
