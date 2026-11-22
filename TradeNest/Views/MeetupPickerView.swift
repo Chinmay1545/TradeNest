@@ -5,45 +5,103 @@ struct MeetupPickerView: View {
     let offer: Offer
     @StateObject private var vm = MeetupViewModel()
     @Environment(\.dismiss) private var dismiss
+    /// Start the map on the user's real location.
+    @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
 
     var body: some View {
         NavigationStack {
-            VStack {
-                Map {
+            VStack(spacing: 0) {
+                // Tapping a pin selects that spot, same as tapping its row.
+                Map(position: $camera, selection: $vm.selectedPlace) {
+                    UserAnnotation()
                     ForEach(vm.nearbyPlaces) { place in
-                        Marker(place.name, coordinate: place.coordinate)
+                        Marker(place.name, systemImage: "mappin", coordinate: place.coordinate)
+                            .tag(place)
                     }
                 }
-                .frame(height: 250)
+                .frame(height: 280)
 
                 List {
-                    ForEach(vm.nearbyPlaces) { place in
-                        Button {
-                            vm.selectedPlace = place
-                        } label: {
+                    Section {
+                        Text("\(offer.buyerName) · \(offer.listingTitle)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Nearby spots") {
+                        if vm.isLoadingPlaces {
                             HStack {
-                                Text(place.name)
-                                Spacer()
-                                if vm.selectedPlace == place {
-                                    Image(systemName: "checkmark")
-                                }
+                                ProgressView()
+                                Text("Finding spots near you…")
+                                    .foregroundStyle(.secondary)
                             }
                         }
-                    }
-                    DatePicker("When", selection: $vm.meetupTime)
-                    Button("Confirm Meetup") {
-                        Task {
-                            await vm.confirmMeetup(offer: offer)
-                            dismiss()
+                        ForEach(vm.nearbyPlaces) { place in
+                            placeRow(place)
                         }
                     }
-                    .disabled(vm.selectedPlace == nil)
+
+                    Section {
+                        DatePicker("When", selection: $vm.meetupTime, in: Date()...)
+                    }
+
+                    Section {
+                        Button {
+                            Task {
+                                await vm.confirmMeetup(offer: offer)
+                                if vm.transaction != nil { dismiss() }
+                            }
+                        } label: {
+                            Text("Confirm Meetup")
+                                .bold()
+                                .frame(maxWidth: .infinity)
+                        }
+                        .disabled(vm.selectedPlace == nil)
+                    }
                 }
             }
             .navigationTitle("Choose a Meetup Spot")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .onChange(of: vm.selectedPlace) { _, place in
+                // Zoom the map to the chosen spot.
+                if let place {
+                    withAnimation {
+                        camera = .region(MKCoordinateRegion(center: place.coordinate, latitudinalMeters: 800, longitudinalMeters: 800))
+                    }
+                }
+            }
             .task {
                 await vm.requestLocation()
                 await vm.loadNearbyPlaces()
+            }
+            .errorAlert($vm.errorMessage)
+        }
+    }
+
+    private func placeRow(_ place: MeetupLocation) -> some View {
+        Button {
+            vm.selectedPlace = place
+        } label: {
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(place.name)
+                        .foregroundStyle(.primary)
+                    if let distance = vm.distanceText(to: place) {
+                        Text(distance)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                if vm.selectedPlace == place {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.tint)
+                }
             }
         }
     }

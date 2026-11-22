@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import MapKit
 import Combine
 
 @MainActor
@@ -36,6 +37,22 @@ final class MeetupViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
         isLoadingPlaces = false
+    }
+
+    /// e.g. "0.3 mi away", or nil until we know where the user is.
+    func distanceText(to place: MeetupLocation) -> String? {
+        guard let user = userLocation else { return nil }
+        let here = CLLocation(latitude: user.latitude, longitude: user.longitude)
+        let there = CLLocation(latitude: place.latitude, longitude: place.longitude)
+        let miles = here.distance(from: there) / 1609.34
+        return String(format: "%.1f mi away", miles)
+    }
+
+    /// Opens Apple Maps with walking directions to the meetup spot.
+    func openDirections(to place: MeetupLocation) {
+        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: place.coordinate))
+        mapItem.name = place.name
+        mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
     }
 
     // MARK: - Firestore (Workstream A)
