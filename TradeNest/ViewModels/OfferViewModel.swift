@@ -87,6 +87,12 @@ final class OfferViewModel: ObservableObject {
         isSending = true
         defer { isSending = false }
         do {
+            // The listing may have been accepted by someone else since this screen opened.
+            let current = try await service.fetchListing(id: listing.id)
+            if current?.status != .available {
+                errorMessage = "This item is no longer available."
+                return false
+            }
             try await service.saveOffer(offer)
             sent.append(offer)
             if let tradeItem {

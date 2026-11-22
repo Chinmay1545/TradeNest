@@ -6,12 +6,14 @@ enum ServiceError: LocalizedError {
     case invalidEmail
     case missingFields
     case notSignedIn
+    case listingUnavailable
 
     var errorDescription: String? {
         switch self {
         case .invalidEmail: return "Please use your .edu email."
         case .missingFields: return "Please fill in all required fields."
         case .notSignedIn: return "You are not signed in."
+        case .listingUnavailable: return "This item is no longer available."
         }
     }
 }
@@ -110,6 +112,11 @@ struct FirebaseService {
     /// Accepts one offer and, in a single batch, marks its listing Pending and rejects
     /// every other pending offer on that listing. Returns the ids of the rejected offers.
     func acceptOffer(_ offer: Offer) async throws -> [String] {
+        let listing = try await fetchListing(id: offer.listingId)
+        if listing?.status != .available {
+            throw ServiceError.listingUnavailable
+        }
+
         let others = try await offers.whereField("listingId", isEqualTo: offer.listingId).getDocuments()
             .documents
             .map { try $0.data(as: Offer.self) }
