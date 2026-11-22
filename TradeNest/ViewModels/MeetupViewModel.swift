@@ -9,18 +9,36 @@ final class MeetupViewModel: ObservableObject {
     @Published var selectedPlace: MeetupLocation?
     @Published var meetupTime = Date()
     @Published var transaction: Transaction?
+    @Published var isLoadingPlaces = false
     @Published var errorMessage: String?
 
     private let service = FirebaseService()
     private let locationService = LocationService()
 
+    // MARK: - Location (Workstream C)
+
+    /// Gets the user's real GPS position. Shows a message if location access is denied.
     func requestLocation() async {
-        userLocation = try? await locationService.currentLocation()
+        do {
+            userLocation = try await locationService.currentLocation()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
+    /// Searches for real public places around the user. Needs `requestLocation()` to have succeeded first.
     func loadNearbyPlaces() async {
-        nearbyPlaces = (try? await locationService.searchNearby(query: "campus")) ?? []
+        guard let here = userLocation else { return }
+        isLoadingPlaces = true
+        do {
+            nearbyPlaces = try await locationService.searchNearby(near: here)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoadingPlaces = false
     }
+
+    // MARK: - Firestore (Workstream A)
 
     func loadMeetup(for offer: Offer) async {
         do {
