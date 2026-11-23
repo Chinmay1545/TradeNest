@@ -19,22 +19,37 @@ struct MarketplaceView: View {
                     NavigationLink {
                         ItemDetailView(listing: listing)
                     } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(listing.title)
-                                Text(listing.sellerName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Text(listing.price, format: .currency(code: "USD"))
-                        }
+                        ListingRow(listing: listing)
                     }
                 }
+                .overlay {
+                    if vm.isLoading && vm.listings.isEmpty {
+                        ProgressView("Loading listings…")
+                    } else if vm.filteredListings.isEmpty && !vm.searchText.isEmpty {
+                        ContentUnavailableView.search(text: vm.searchText)
+                    } else if vm.filteredListings.isEmpty {
+                        ContentUnavailableView(
+                            "No Listings",
+                            systemImage: "tray",
+                            description: Text("Nothing for sale here yet. Post something on the Sell tab!")
+                        )
+                    }
+                }
+                .refreshable { await vm.loadListings() }
             }
+            .appBackground()
             .navigationTitle("Marketplace")
             .searchable(text: $vm.searchText)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Toggle(isOn: $vm.tradesOnly) {
+                        Label("Trades only", systemImage: "arrow.left.arrow.right")
+                    }
+                    .toggleStyle(.button)
+                }
+            }
             .task { await vm.loadListings() }
+            .errorAlert($vm.errorMessage)
         }
     }
 }

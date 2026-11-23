@@ -3,32 +3,105 @@ import MapKit
 
 struct MeetupDetailView: View {
     let offer: Offer
+    @EnvironmentObject var auth: AuthViewModel
     @StateObject private var vm = MeetupViewModel()
+    @State private var hasLoaded = false
+    @State private var showPicker = false
+
+    private var isSeller: Bool { offer.sellerId == auth.currentUser?.id }
 
     var body: some View {
-        VStack {
+        Group {
             if let transaction = vm.transaction {
-                Map {
-                    Marker(transaction.meetup.name, coordinate: transaction.meetup.coordinate)
+                meetupInfo(transaction)
+            } else if !hasLoaded {
+                ProgressView()
+            } else if isSeller {
+                ContentUnavailableView {
+                    Label("No Meetup Yet", systemImage: "mappin.slash")
+                } description: {
+                    Text("Pick a safe public spot and a time to meet the buyer.")
+                } actions: {
+                    Button("Schedule Meetup") { showPicker = true }
+                        .buttonStyle(.borderedProminent)
                 }
-                .frame(height: 250)
+            } else {
+                ContentUnavailableView(
+                    "No Meetup Yet",
+                    systemImage: "mappin.slash",
+                    description: Text("Waiting for the seller to pick a meetup spot.")
+                )
+            }
+        }
+        .appBackground()
+        .navigationTitle("Meetup")
+        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showPicker, onDismiss: {
+            Task {
+                await vm.loadMeetup(for: offer)
+                if vm.transaction != nil {
+                    await vm.requestLocation()
+                }
+            }
+        }) {
+            MeetupPickerView(offer: offer)
+        }
+        .task {
+            await vm.loadMeetup(for: offer)
+            hasLoaded = true
+            if vm.transaction != nil {
+                await vm.requestLocation()
+            }
+        }
+        .errorAlert($vm.errorMessage)
+    }
 
-                List {
-                    LabeledContent("Place", value: transaction.meetup.name)
-                    LabeledContent("Date", value: transaction.meetupTime.formatted(date: .abbreviated, time: .shortened))
+    private func meetupInfo(_ transaction: Transaction) -> some View {
+        VStack(spacing: 0) {
+            Map(initialPosition: .region(MKCoordinateRegion(center: transaction.meetup.coordinate, latitudinalMeters: 1000, longitudinalMeters: 1000))) {
+                UserAnnotation()
+                Marker(transaction.meetup.name, systemImage: "mappin", coordinate: transaction.meetup.coordinate)
+            }
+            .frame(height: 280)
+
+            List {
+                Section {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(transaction.meetup.name)
+                            .font(.title3)
+                            .bold()
+                        if let distance = vm.distanceText(to: transaction.meetup) {
+                            Text(distance)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Button {
+                        vm.openDirections(to: transaction.meetup)
+                    } label: {
+                        Label("Directions", systemImage: "figure.walk")
+                    }
+                }
+
+                Section {
+                    LabeledContent("Date", value: transaction.meetupTime.formatted(date: .abbreviated, time: .omitted))
+                    LabeledContent("Time", value: transaction.meetupTime.formatted(date: .omitted, time: .shortened))
                     LabeledContent("Item", value: transaction.itemTitle)
                     LabeledContent("Status", value: transaction.status.rawValue)
-                    if transaction.status == .scheduled {
-                        Button("Mark as Completed") {
+                }
+
+                if transaction.status == .scheduled {
+                    Section {
+                        Button {
                             Task { await vm.completeTransaction() }
+                        } label: {
+                            Text("Mark as Completed")
+                                .bold()
+                                .frame(maxWidth: .infinity)
                         }
                     }
                 }
-            } else {
-                Text("Waiting for the seller to pick a meetup spot")
             }
         }
-        .navigationTitle("Meetup")
-        .task { await vm.loadMeetup(for: offer) }
     }
 }

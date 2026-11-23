@@ -6,12 +6,24 @@ enum ServiceError: LocalizedError {
     case invalidEmail
     case missingFields
     case notSignedIn
+    case listingUnavailable
+    case tradeItemUnavailable
+    case wrongLogin
+    case emailTaken
+    case weakPassword
+    case noInternet
 
     var errorDescription: String? {
         switch self {
         case .invalidEmail: return "Please use your .edu email."
         case .missingFields: return "Please fill in all required fields."
         case .notSignedIn: return "You are not signed in."
+        case .listingUnavailable: return "This item is no longer available."
+        case .tradeItemUnavailable: return "The item offered in this trade is no longer available."
+        case .wrongLogin: return "Wrong email or password."
+        case .emailTaken: return "An account with this email already exists. Try logging in."
+        case .weakPassword: return "Password must be at least 6 characters."
+        case .noInternet: return "No internet connection. Check your connection and try again."
         }
     }
 }
@@ -28,18 +40,47 @@ struct FirebaseService {
     // MARK: - Auth
 
     func signIn(email: String, password: String) async throws -> User {
+        let email = email.trimmingCharacters(in: .whitespaces)
         guard email.lowercased().hasSuffix(".edu") else { throw ServiceError.invalidEmail }
-        let result = try await Auth.auth().signIn(withEmail: email, password: password)
-        return try await fetchUser(id: result.user.uid)
+        do {
+            let result = try await Auth.auth().signIn(withEmail: email, password: password)
+            return try await fetchUser(id: result.user.uid)
+        } catch {
+            throw friendlyAuthError(error)
+        }
     }
 
     func signUp(name: String, email: String, password: String, major: String, campus: String) async throws -> User {
+        let email = email.trimmingCharacters(in: .whitespaces)
         guard email.lowercased().hasSuffix(".edu") else { throw ServiceError.invalidEmail }
         guard !name.isEmpty else { throw ServiceError.missingFields }
-        let result = try await Auth.auth().createUser(withEmail: email, password: password)
-        let user = User(id: result.user.uid, name: name, email: email, major: major, campus: campus)
-        try await saveUser(user)
-        return user
+        do {
+            let result = try await Auth.auth().createUser(withEmail: email, password: password)
+            let user = User(id: result.user.uid, name: name, email: email, major: major, campus: campus)
+            try await saveUser(user)
+            return user
+        } catch {
+            throw friendlyAuthError(error)
+        }
+    }
+
+    /// Turns Firebase's technical login errors into messages a student understands.
+    private func friendlyAuthError(_ error: Error) -> Error {
+        let code = AuthErrorCode(rawValue: (error as NSError).code)
+        switch code {
+        case .wrongPassword, .invalidCredential, .userNotFound:
+            return ServiceError.wrongLogin
+        case .invalidEmail:
+            return ServiceError.invalidEmail
+        case .emailAlreadyInUse:
+            return ServiceError.emailTaken
+        case .weakPassword:
+            return ServiceError.weakPassword
+        case .networkError:
+            return ServiceError.noInternet
+        default:
+            return error
+        }
     }
 
     /// Returns the profile for the user Firebase remembers from a previous launch, if any.
@@ -110,6 +151,19 @@ struct FirebaseService {
     /// Accepts one offer and, in a single batch, marks its listing Pending and rejects
     /// every other pending offer on that listing. Returns the ids of the rejected offers.
     func acceptOffer(_ offer: Offer) async throws -> [String] {
+        let listing = try await fetchListing(id: offer.listingId)
+        if listing?.status != .available {
+            throw ServiceError.listingUnavailable
+        }
+
+        // In a trade, the buyer's item must still be available too.
+        if let tradeId = offer.tradeListingId {
+            let tradeItem = try await fetchListing(id: tradeId)
+            if tradeItem?.status != .available {
+                throw ServiceError.tradeItemUnavailable
+            }
+        }
+
         let others = try await offers.whereField("listingId", isEqualTo: offer.listingId).getDocuments()
             .documents
             .map { try $0.data(as: Offer.self) }
@@ -118,6 +172,9 @@ struct FirebaseService {
         let batch = db.batch()
         batch.updateData(["status": OfferStatus.accepted.rawValue], forDocument: offers.document(offer.id))
         batch.updateData(["status": ListingStatus.pending.rawValue], forDocument: listings.document(offer.listingId))
+        if let tradeId = offer.tradeListingId {
+            batch.updateData(["status": ListingStatus.pending.rawValue], forDocument: listings.document(tradeId))
+        }
         for other in others {
             batch.updateData(["status": OfferStatus.rejected.rawValue], forDocument: offers.document(other.id))
         }
@@ -145,10 +202,22 @@ struct FirebaseService {
     }
 
     /// Marks the meetup completed and the listing sold together.
+    /// In a trade, the buyer's traded item is marked sold too.
     func completeTransaction(_ transaction: Transaction) async throws {
+        let offer = try await offers.document(transaction.offerId).getDocument().data(as: Offer.self)
+
         let batch = db.batch()
         batch.updateData(["status": TransactionStatus.completed.rawValue], forDocument: transactions.document(transaction.id))
         batch.updateData(["status": ListingStatus.sold.rawValue], forDocument: listings.document(transaction.listingId))
+        if let tradeId = offer.tradeListingId {
+            batch.updateData(["status": ListingStatus.sold.rawValue], forDocument: listings.document(tradeId))
+        }
         try await batch.commit()
+    }
+
+    func fetchListing(id: String) async throws -> Listing? {
+        let document = try await listings.document(id).getDocument()
+        guard document.exists else { return nil }
+        return try document.data(as: Listing.self)
     }
 }

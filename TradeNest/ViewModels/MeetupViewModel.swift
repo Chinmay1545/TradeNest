@@ -1,5 +1,6 @@
 import Foundation
 import CoreLocation
+import MapKit
 import Combine
 
 @MainActor
@@ -9,17 +10,43 @@ final class MeetupViewModel: ObservableObject {
     @Published var selectedPlace: MeetupLocation?
     @Published var meetupTime = Date()
     @Published var transaction: Transaction?
+    @Published var isLoadingPlaces = false
     @Published var errorMessage: String?
 
     private let service = FirebaseService()
     private let locationService = LocationService()
 
     func requestLocation() async {
-        userLocation = try? await locationService.currentLocation()
+        do {
+            userLocation = try await locationService.currentLocation()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func loadNearbyPlaces() async {
-        nearbyPlaces = (try? await locationService.searchNearby(query: "campus")) ?? []
+        guard let here = userLocation else { return }
+        isLoadingPlaces = true
+        do {
+            nearbyPlaces = try await locationService.searchNearby(near: here)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoadingPlaces = false
+    }
+
+    func distanceText(to place: MeetupLocation) -> String? {
+        guard let user = userLocation else { return nil }
+        let here = CLLocation(latitude: user.latitude, longitude: user.longitude)
+        let there = CLLocation(latitude: place.latitude, longitude: place.longitude)
+        let miles = here.distance(from: there) / 1609.34
+        return String(format: "%.1f mi away", miles)
+    }
+
+    func openDirections(to place: MeetupLocation) {
+        let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: place.coordinate))
+        mapItem.name = place.name
+        mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeWalking])
     }
 
     func loadMeetup(for offer: Offer) async {
@@ -41,7 +68,6 @@ final class MeetupViewModel: ObservableObject {
         }
     }
 
-    /// Completing the meetup also marks the listing as sold.
     func completeTransaction() async {
         guard var current = transaction else { return }
         do {
